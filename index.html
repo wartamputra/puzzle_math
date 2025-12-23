@@ -3,111 +3,164 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crossmath Arcade - Endless Mode</title>
+    <title>Crossmath Infinite - Arcade Edition</title>
     <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            --glass-bg: rgba(255, 255, 255, 0.1);
+            --board-color: #ecf0f1;
+            --primary-btn: #27ae60;
+            --secondary-btn: #e74c3c;
+            --hint-btn: #f39c12;
+            --text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #2c3e50;
+            background: var(--bg-gradient);
             color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
-            overflow: hidden;
+            overflow: hidden; /* Mencegah scroll saat main */
         }
 
+        /* Title Styling */
         h1 {
-            margin-bottom: 10px;
-            font-size: 28px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin: 0;
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-shadow: var(--text-shadow);
+            background: -webkit-linear-gradient(#fff, #bdc3c7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        h2#levelTitle {
+            margin-top: 5px;
+            font-size: 16px;
+            color: #bdc3c7;
+            font-weight: 500;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.9;
         }
 
         /* HUD (Heads Up Display) */
         .hud {
             display: flex;
             justify-content: space-between;
-            width: 320px;
-            margin-bottom: 10px;
+            width: 340px;
+            margin-bottom: 15px;
             font-weight: bold;
         }
 
         .hud-item {
-            background: rgba(0,0,0,0.3);
-            padding: 8px 15px;
-            border-radius: 20px;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(5px);
+            padding: 8px 16px;
+            border-radius: 50px;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 8px;
+            font-size: 14px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
         }
 
-        .heart { color: #e74c3c; }
-        .score { color: #f1c40f; }
-        .timer { color: #3498db; }
+        .heart { color: #ff6b6b; text-shadow: 0 0 10px rgba(255, 107, 107, 0.5); }
+        .score { color: #f1c40f; text-shadow: 0 0 10px rgba(241, 196, 15, 0.5); }
+        .timer { color: #4facfe; text-shadow: 0 0 10px rgba(79, 172, 254, 0.5); }
 
+        /* Game Board Container */
         .canvas-container {
             position: relative;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            border-radius: 12px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            border-radius: 16px;
             overflow: hidden;
-            border: 4px solid #34495e;
+            border: 8px solid #34495e;
+            background-color: #34495e;
         }
 
         canvas {
-            background-color: #ecf0f1;
+            background-color: var(--board-color);
             display: block;
             cursor: pointer;
             touch-action: none; 
         }
 
+        /* Controls Area */
         .controls {
             margin-top: 20px;
             display: flex;
             flex-direction: column;
+            gap: 12px;
+            width: 340px;
+        }
+
+        .btn-row {
+            display: flex;
             gap: 10px;
-            width: 320px;
+        }
+
+        button {
+            font-family: inherit;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            color: white;
+            font-weight: 700;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 3D Button Effect */
+        button:active {
+            transform: translateY(2px);
+            box-shadow: none !important;
         }
 
         .btn-main {
-            padding: 15px;
+            padding: 16px;
             font-size: 18px;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            background-color: #27ae60;
-            color: white;
-            box-shadow: 0 4px 0 #219150;
-            transition: transform 0.1s, box-shadow 0.1s;
-        }
-
-        .btn-main:active {
-            transform: translateY(4px);
-            box-shadow: 0 0 0 #219150;
-        }
-
-        .btn-secondary {
-            background-color: #e74c3c;
-            box-shadow: 0 4px 0 #c0392b;
-            padding: 10px;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
+            background-color: var(--primary-btn);
+            box-shadow: 0 4px 0 #1e8449;
+            flex: 2;
         }
         
-        .btn-secondary:active {
-            transform: translateY(4px);
-            box-shadow: 0 0 0 #c0392b;
+        .btn-main:hover { filter: brightness(1.1); }
+
+        .btn-secondary {
+            background-color: var(--secondary-btn);
+            box-shadow: 0 4px 0 #c0392b;
+            padding: 12px;
+            font-size: 14px;
+            flex: 1;
         }
 
+        .btn-hint {
+            background-color: var(--hint-btn);
+            box-shadow: 0 4px 0 #d35400;
+            padding: 12px;
+            font-size: 14px;
+            flex: 1;
+        }
+
+        /* Numpad Styling */
         .numpad {
             display: none; 
             grid-template-columns: repeat(3, 1fr);
             gap: 8px;
             margin-top: 15px;
-            width: 320px;
+            width: 340px;
         }
         
         @media (max-width: 600px) {
@@ -117,31 +170,107 @@
         .num-btn {
             padding: 15px;
             font-size: 20px;
-            background-color: white;
-            border: none;
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            box-shadow: 0 3px 0 #bdc3c7;
             border-radius: 8px;
-            color: #333;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         
-        .num-btn:active { background-color: #ddd; }
+        .num-btn:active {
+            background-color: #bdc3c7;
+            transform: translateY(3px);
+            box-shadow: none;
+        }
+
+        /* --- POPUP MODAL STYLING --- */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Black w/ opacity */
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 400px;
+            padding: 25px;
+            position: relative;
+            color: #333;
+            box-shadow: 0 15px 50px rgba(0,0,0,0.5);
+            animation: slideUp 0.3s;
+            text-align: left;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 22px;
+        }
+
+        .close-btn {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover { color: #e74c3c; }
+
+        .modal-body p { margin: 10px 0; line-height: 1.5; color: #555; }
+        .modal-body ul { padding-left: 20px; color: #444; }
+        .modal-body li { margin-bottom: 8px; }
+
+        .instruction-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #f39c12;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        /* Animations */
+        @keyframes fadeIn { from {opacity: 0;} to {opacity: 1;} }
+        @keyframes slideUp { from {transform: translateY(50px); opacity: 0;} to {transform: translateY(0); opacity: 1;} }
+
     </style>
 </head>
 <body>
 
-    <h1>Crossmath Arcade</h1>
+    <h1>CROSSMATH</h1>
+    <h2 id="levelTitle">Level 1 - PEMULA</h2>
     
     <div class="hud">
-        <div class="hud-item"><span class="heart">❤️❤️❤️</span> <span id="livesText">3</span></div>
-        <div class="hud-item"><span class="timer">⏱️</span> <span id="timerText">60</span>s</div>
+        <div class="hud-item"><span class="heart">❤️</span> <span id="livesText">3</span></div>
+        <div class="hud-item"><span class="timer">⏱️</span> <span id="timerText">60s</span></div>
         <div class="hud-item"><span class="score">⭐</span> <span id="scoreText">0</span></div>
     </div>
 
     <div class="canvas-container">
-        <canvas id="gameCanvas" width="320" height="320"></canvas>
+        <canvas id="gameCanvas" width="340" height="340"></canvas>
     </div>
 
-    <!-- Numpad untuk Mobile -->
+    <!-- Numpad -->
     <div class="numpad" id="numpad">
         <button class="num-btn" onclick="inputNum('1')">1</button>
         <button class="num-btn" onclick="inputNum('2')">2</button>
@@ -153,12 +282,37 @@
         <button class="num-btn" onclick="inputNum('8')">8</button>
         <button class="num-btn" onclick="inputNum('9')">9</button>
         <button class="num-btn" onclick="inputNum('0')">0</button>
-        <button class="num-btn" style="grid-column: span 2; background-color: #ffcccc;" onclick="inputBackspace()">⌫ Hapus</button>
+        <button class="num-btn" style="grid-column: span 2; color: #e74c3c;" onclick="inputBackspace()">⌫ Hapus</button>
     </div>
 
     <div class="controls">
         <button class="btn-main" onclick="checkAnswers()">✅ CEK JAWABAN</button>
-        <button class="btn-secondary" onclick="resetGame()">🔄 Reset Game</button>
+        <div class="btn-row">
+            <button class="btn-hint" onclick="toggleHint()">💡 Petunjuk</button>
+            <button class="btn-secondary" onclick="resetGame()">🔄 Reset</button>
+        </div>
+    </div>
+
+    <!-- HINT POPUP MODAL -->
+    <div id="hintModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cara Bermain</h3>
+                <span class="close-btn" onclick="toggleHint()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Tujuan permainan adalah mengisi kotak kosong agar semua persamaan matematika (mendatar & menurun) menjadi benar.</p>
+                <ul>
+                    <li>👆 <strong>Klik</strong> kotak putih untuk memilih.</li>
+                    <li>⌨️ <strong>Ketik</strong> angka jawaban kamu.</li>
+                    <li>🧮 Perhatikan <strong>operator</strong> (+, -, ×, ÷).</li>
+                    <li>✅ Tekan tombol <strong>Cek Jawaban</strong> jika sudah yakin.</li>
+                </ul>
+                <div class="instruction-box">
+                    <strong>Tips:</strong> Mulailah dari baris atau kolom yang hanya memiliki satu kotak kosong! Hati-hati, jawaban salah akan mengurangi ❤️ Nyawa.
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -167,11 +321,25 @@
         const livesEl = document.getElementById('livesText');
         const timerEl = document.getElementById('timerText');
         const scoreEl = document.getElementById('scoreText');
+        const levelTitleEl = document.getElementById('levelTitle');
+        const modal = document.getElementById('hintModal');
 
         // Config
         const ROWS = 5;
         const COLS = 5;
         const CELL_SIZE = canvas.width / COLS; 
+
+        // Definisi Operator
+        const OPS = [
+            { s: '+', fn: (a,b)=>a+b },
+            { s: '-', fn: (a,b)=>a-b },
+            { s: '×', fn: (a,b)=>a*b },
+            { s: '÷', fn: (a,b)=> {
+                if (b === 0) return null;
+                if (a % b !== 0) return null;
+                return a / b;
+            }}
+        ];
 
         // Game State
         let lives = 3;
@@ -182,40 +350,110 @@
         let isGameActive = true;
         let selectedCell = null;
         
-        // Grid Data
         let grid = [];
-        let currentLevelConfig = null;
 
-        // Level Database
-        const LEVELS = [
-            { // L1: Basic Ops
-                grid: [
-                    [{t:'fixed', v:'4'}, {t:'op', v:'×'}, {t:'input', ans:'6', val:'', state:'neutral'}, {t:'op', v:'='}, {t:'fixed', v:'24'}],
-                    [{t:'op', v:'×'}, {t:'empty'}, {t:'op', v:'÷'}, {t:'empty'}, {t:'op', v:'÷'}],
-                    [{t:'input', ans:'3', val:'', state:'neutral'}, {t:'op', v:'×'}, {t:'fixed', v:'2'}, {t:'op', v:'='}, {t:'input', ans:'6', val:'', state:'neutral'}],
-                    [{t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}],
-                    [{t:'input', ans:'12', val:'', state:'neutral'}, {t:'op', v:'÷'}, {t:'input', ans:'3', val:'', state:'neutral'}, {t:'op', v:'='}, {t:'fixed', v:'4'}]
-                ]
-            },
-            { // L2: Addition
-                grid: [
-                    [{t:'input', ans:'1', val:'', state:'neutral'}, {t:'op', v:'+'}, {t:'fixed', v:'2'}, {t:'op', v:'='}, {t:'input', ans:'3', val:'', state:'neutral'}],
-                    [{t:'op', v:'+'}, {t:'empty'}, {t:'op', v:'+'}, {t:'empty'}, {t:'op', v:'+'}],
-                    [{t:'fixed', v:'4'}, {t:'op', v:'+'}, {t:'input', ans:'5', val:'', state:'neutral'}, {t:'op', v:'='}, {t:'fixed', v:'9'}],
-                    [{t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}],
-                    [{t:'input', ans:'5', val:'', state:'neutral'}, {t:'op', v:'+'}, {t:'fixed', v:'7'}, {t:'op', v:'='}, {t:'input', ans:'12', val:'', state:'neutral'}]
-                ]
-            },
-            { // L3: Mixed Hard
-                grid: [
-                    [{t:'input', ans:'6', val:'', state:'neutral'}, {t:'op', v:'÷'}, {t:'input', ans:'2', val:'', state:'neutral'}, {t:'op', v:'='}, {t:'fixed', v:'3'}],
-                    [{t:'op', v:'+'}, {t:'empty'}, {t:'op', v:'×'}, {t:'empty'}, {t:'op', v:'×'}],
-                    [{t:'fixed', v:'1'}, {t:'op', v:'+'}, {t:'input', ans:'4', val:'', state:'neutral'}, {t:'op', v:'='}, {t:'input', ans:'5', val:'', state:'neutral'}],
-                    [{t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}],
-                    [{t:'input', ans:'7', val:'', state:'neutral'}, {t:'op', v:'+'}, {t:'fixed', v:'8'}, {t:'op', v:'='}, {t:'fixed', v:'15'}]
-                ]
+        // --- HINT FUNCTION ---
+        function toggleHint() {
+            if (modal.style.display === "flex") {
+                modal.style.display = "none";
+            } else {
+                modal.style.display = "flex";
             }
-        ];
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        // --- LEVEL GENERATOR ---
+        function generateLevel(levelNum) {
+            let difficulty = 'Pemula';
+            let allowedOps = [0, 1]; // + -
+            let maxNum = 10;
+            let hiddenCount = 3;
+
+            if (levelNum > 5) { 
+                difficulty = 'Menengah';
+                allowedOps = [0, 1, 2]; // + - *
+                maxNum = 15;
+                hiddenCount = 4;
+            }
+            if (levelNum > 10) { 
+                difficulty = 'Ahli';
+                allowedOps = [0, 1, 2, 3]; // All
+                maxNum = 20;
+                hiddenCount = 5;
+            }
+            if (levelNum > 20) { 
+                difficulty = 'Master';
+                maxNum = 30;
+                hiddenCount = 6;
+            }
+
+            let attempt = 0;
+            while (true) {
+                attempt++;
+                const opsIdx = Array(6).fill(0).map(() => allowedOps[Math.floor(Math.random() * allowedOps.length)]);
+                const opObjs = opsIdx.map(i => OPS[i]);
+
+                const A = Math.floor(Math.random() * maxNum) + 1;
+                const B = Math.floor(Math.random() * maxNum) + 1;
+                const D = Math.floor(Math.random() * maxNum) + 1;
+                const E = Math.floor(Math.random() * maxNum) + 1;
+
+                const C = opObjs[0].fn(A, B);
+                const F = opObjs[1].fn(D, E);
+                const G = opObjs[3].fn(A, D);
+                const H = opObjs[4].fn(B, E);
+
+                if (!isValidNum(C) || !isValidNum(F) || !isValidNum(G) || !isValidNum(H)) continue;
+
+                const I_horz = opObjs[2].fn(G, H);
+                const I_vert = opObjs[5].fn(C, F);
+
+                if (!isValidNum(I_horz) || !isValidNum(I_vert)) continue;
+                if (I_horz !== I_vert) continue;
+
+                const I = I_horz;
+
+                const newGrid = [
+                    [{t:'fixed', v:A}, {t:'op', v:opObjs[0].s}, {t:'fixed', v:B}, {t:'op', v:'='}, {t:'fixed', v:C}],
+                    [{t:'op', v:opObjs[3].s}, {t:'empty'}, {t:'op', v:opObjs[4].s}, {t:'empty'}, {t:'op', v:opObjs[5].s}],
+                    [{t:'fixed', v:D}, {t:'op', v:opObjs[1].s}, {t:'fixed', v:E}, {t:'op', v:'='}, {t:'fixed', v:F}],
+                    [{t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}],
+                    [{t:'fixed', v:G}, {t:'op', v:opObjs[2].s}, {t:'fixed', v:H}, {t:'op', v:'='}, {t:'fixed', v:I}]
+                ];
+
+                const numberCells = [
+                    {r:0, c:0, val:A}, {r:0, c:2, val:B}, {r:0, c:4, val:C},
+                    {r:2, c:0, val:D}, {r:2, c:2, val:E}, {r:2, c:4, val:F},
+                    {r:4, c:0, val:G}, {r:4, c:2, val:H}, {r:4, c:4, val:I}
+                ];
+
+                const shuffled = numberCells.sort(() => 0.5 - Math.random());
+                for (let i = 0; i < hiddenCount; i++) {
+                    const target = shuffled[i];
+                    newGrid[target.r][target.c] = {
+                        t: 'input',
+                        ans: target.val.toString(),
+                        val: '',
+                        state: 'neutral'
+                    };
+                }
+
+                return {
+                    grid: newGrid,
+                    difficulty: difficulty
+                };
+            }
+        }
+
+        function isValidNum(n) {
+            return n !== null && Number.isInteger(n) && n >= 0 && n <= 100;
+        }
 
         // --- CORE GAMEPLAY ---
 
@@ -223,34 +461,29 @@
             lives = 3;
             score = 0;
             level = 1;
-            loadLevel(0);
+            loadLevel();
             updateHUD();
         }
 
-        function loadLevel(levelIdx) {
-            // Loop level jika habis (Endless Mode)
-            const actualIdx = levelIdx % LEVELS.length;
+        function loadLevel() {
+            const levelData = generateLevel(level);
+            grid = levelData.grid;
             
-            // Deep copy grid
-            grid = JSON.parse(JSON.stringify(LEVELS[actualIdx].grid));
-            
-            // Reset state level
+            levelTitleEl.innerText = `LEVEL ${level} - ${levelData.difficulty.toUpperCase()}`;
+
             selectedCell = null;
             isGameActive = true;
             
-            // Set Timer (Semakin tinggi level, semakin sedikit waktu minus 5 detik per loop)
-            const loopCount = Math.floor(levelIdx / LEVELS.length);
-            timeLeft = Math.max(20, 60 - (loopCount * 10)); // Min 20 detik
+            timeLeft = Math.min(90, 60 + Math.floor(level/2)); 
             
             startTimer();
             draw();
-            
-            // Efek transisi level
-            showToast(`LEVEL ${levelIdx + 1}`);
+            showToast(`LEVEL ${level}`);
         }
 
         function startTimer() {
             if (timerInterval) clearInterval(timerInterval);
+            updateHUD();
             timerInterval = setInterval(() => {
                 if (!isGameActive) return;
                 timeLeft--;
@@ -270,7 +503,6 @@
             let filledCount = 0;
             let totalInputs = 0;
 
-            // 1. Validasi
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     const cell = grid[r][c];
@@ -279,14 +511,13 @@
                         if (cell.val !== '') filledCount++;
 
                         if (cell.val === cell.ans) {
-                            cell.state = 'correct'; // Hijau
+                            cell.state = 'correct'; 
                         } else {
                             if (cell.val !== '') {
-                                cell.state = 'wrong'; // Merah
+                                cell.state = 'wrong'; 
                                 hasError = true;
                                 allCorrect = false;
                             } else {
-                                // Kosong dianggap belum benar
                                 allCorrect = false; 
                             }
                         }
@@ -294,30 +525,26 @@
                 }
             }
 
-            // 2. Feedback Logic
             draw();
 
             if (hasError) {
                 lives--;
                 updateHUD();
-                showToast("JAWABAN SALAH! -1 ❤️");
+                showToast("SALAH! -1 ❤️");
                 if (lives <= 0) {
                     handleGameOver("GAME OVER");
                 }
             } else if (filledCount < totalInputs) {
                 showToast("ISI SEMUA KOTAK!");
             } else if (allCorrect) {
-                // WIN LEVEL
-                score += 50 + (timeLeft * 2); // Bonus skor
+                score += 50 + (timeLeft * 2);
                 level++;
                 updateHUD();
-                showToast("LEVEL SELESAI! +50 Pts");
+                showToast("SELESAI! +POINT");
                 
                 setTimeout(() => {
-                    loadLevel(level - 1);
+                    loadLevel();
                 }, 1500);
-            } else {
-                // Kasus lain (misal kosong semua)
             }
         }
 
@@ -325,8 +552,7 @@
             isGameActive = false;
             clearInterval(timerInterval);
             
-            // Draw Overlay
-            ctx.fillStyle = "rgba(44, 62, 80, 0.9)";
+            ctx.fillStyle = "rgba(44, 62, 80, 0.95)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
             ctx.fillStyle = "#e74c3c";
@@ -336,10 +562,11 @@
             
             ctx.fillStyle = "#fff";
             ctx.font = "20px Arial";
-            ctx.fillText(`Skor Akhir: ${score}`, canvas.width/2, canvas.height/2 + 10);
+            ctx.fillText(`Level Dicapai: ${level}`, canvas.width/2, canvas.height/2 + 10);
+            ctx.fillText(`Total Skor: ${score}`, canvas.width/2, canvas.height/2 + 40);
             
             ctx.font = "14px Arial";
-            ctx.fillText("Tekan Reset untuk main lagi", canvas.width/2, canvas.height/2 + 40);
+            ctx.fillText("Tekan Reset untuk main lagi", canvas.width/2, canvas.height/2 + 80);
         }
 
         function resetGame() {
@@ -349,35 +576,53 @@
         function updateHUD() {
             livesEl.innerText = lives;
             scoreEl.innerText = score;
-            timerEl.innerText = timeLeft;
+            timerEl.innerText = timeLeft + 's';
             
-            // Update Heart Visuals (Optional text update is handled above)
-            const hearts = "❤️".repeat(Math.max(0, lives));
-            document.querySelector('.heart').innerText = hearts;
-
-            if (timeLeft <= 10) timerEl.style.color = '#e74c3c';
-            else timerEl.style.color = '#3498db';
+            if (timeLeft <= 10) timerEl.parentElement.style.border = '1px solid #e74c3c';
+            else timerEl.parentElement.style.border = '1px solid rgba(255,255,255,0.1)';
         }
 
         function showToast(msg) {
-            // Simple canvas toast
-            ctx.save();
-            ctx.font = "bold 20px Arial";
-            ctx.textAlign = "center";
-            ctx.fillStyle = "rgba(0,0,0,0.7)";
-            ctx.fillRect(20, canvas.height/2 - 20, canvas.width - 40, 40);
-            ctx.fillStyle = "#fff";
-            ctx.fillText(msg, canvas.width/2, canvas.height/2 + 7);
-            ctx.restore();
+            // Kita akan menggambar toast langsung di atas canvas
+            // Agar tetap terlihat "di dalam game"
+            setTimeout(() => {
+                ctx.save();
+                ctx.font = "bold 20px Arial";
+                ctx.textAlign = "center";
+                
+                const width = ctx.measureText(msg).width + 40;
+                
+                ctx.fillStyle = "rgba(0,0,0,0.85)";
+                roundRect(ctx, canvas.width/2 - width/2, canvas.height/2 - 25, width, 50, 10);
+                ctx.fill();
+                
+                ctx.fillStyle = "#fff";
+                ctx.fillText(msg, canvas.width/2, canvas.height/2 + 7);
+                ctx.restore();
+            }, 10);
             
-            // Redraw after delay to clear toast
-            setTimeout(draw, 1000);
+            // Redraw clean state after delay
+            setTimeout(draw, 1200);
+        }
+        
+        // Helper function for rounded rect
+        function roundRect(ctx, x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2;
+            if (h < 2 * r) r = h / 2;
+            ctx.beginPath();
+            ctx.moveTo(x+r, y);
+            ctx.arcTo(x+w, y,   x+w, y+h, r);
+            ctx.arcTo(x+w, y+h, x,   y+h, r);
+            ctx.arcTo(x,   y+h, x,   y,   r);
+            ctx.arcTo(x,   y,   x+w, y,   r);
+            ctx.closePath();
+            return ctx;
         }
 
         // --- DRAWING ---
 
         function draw() {
-            if (!isGameActive && lives <= 0) return; // Jangan gambar ulang jika game over overlay aktif
+            if (!isGameActive && lives <= 0) return;
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -389,46 +634,48 @@
 
                     if (cell.t === 'empty') continue;
 
-                    // Base Style
-                    ctx.strokeStyle = "#7f8c8d";
+                    // --- Styling Cells ---
                     ctx.lineWidth = 2;
-                    let bgColor = "#ecf0f1";
-                    let textColor = "#2c3e50";
+                    let bgColor, textColor, borderColor;
 
+                    // Default Colors
                     if (cell.t === 'input') {
-                        bgColor = "#fff";
-                        
-                        // State Colors
+                        bgColor = "#ffffff";
+                        textColor = "#2c3e50";
+                        borderColor = "#bdc3c7";
+
                         if (cell.state === 'correct') {
-                            bgColor = "#2ecc71"; // Hijau
-                            textColor = "#fff";
+                            bgColor = "#27ae60"; textColor = "#fff"; borderColor = "#219150";
                         } else if (cell.state === 'wrong') {
-                            bgColor = "#e74c3c"; // Merah
-                            textColor = "#fff";
+                            bgColor = "#e74c3c"; textColor = "#fff"; borderColor = "#c0392b";
                         } else if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
-                            bgColor = "#3498db"; // Biru (Fokus)
-                            textColor = "#fff";
+                            bgColor = "#eaf2f8"; borderColor = "#3498db";
                         }
                     } else {
-                        // Fixed / Operator
-                        bgColor = "#bdc3c7";
+                        // Fixed Numbers & Operators
+                        bgColor = "#ecf0f1";
+                        textColor = "#7f8c8d";
+                        borderColor = "#d0d3d4";
                     }
 
-                    // Draw Box
+                    // Draw Cell Box with rounded corners look
                     ctx.fillStyle = bgColor;
-                    ctx.fillRect(x + 3, y + 3, CELL_SIZE - 6, CELL_SIZE - 6);
+                    ctx.fillRect(x + 4, y + 4, CELL_SIZE - 8, CELL_SIZE - 8);
                     
-                    // Style border untuk cell aktif
-                    if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
-                        ctx.strokeStyle = "#2980b9";
-                        ctx.lineWidth = 4;
+                    // Selection Highlight Border
+                    if (selectedCell && selectedCell.r === r && selectedCell.c === c && cell.t === 'input') {
+                        ctx.strokeStyle = "#3498db";
+                        ctx.lineWidth = 3;
+                        ctx.strokeRect(x + 4, y + 4, CELL_SIZE - 8, CELL_SIZE - 8);
+                    } else {
+                        ctx.strokeStyle = borderColor;
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x + 4, y + 4, CELL_SIZE - 8, CELL_SIZE - 8);
                     }
-                    
-                    ctx.strokeRect(x + 3, y + 3, CELL_SIZE - 6, CELL_SIZE - 6);
 
                     // Draw Text
                     ctx.fillStyle = textColor;
-                    ctx.font = "bold " + (CELL_SIZE * 0.5) + "px Arial";
+                    ctx.font = "bold " + (CELL_SIZE * 0.45) + "px 'Segoe UI', Arial";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
 
@@ -443,11 +690,11 @@
         window.inputNum = function(num) {
             if (!isGameActive || !selectedCell) return;
             const cell = grid[selectedCell.r][selectedCell.c];
-            
-            // Reset state jika user mengetik ulang di kotak yang salah
-            if (cell.state === 'wrong') cell.state = 'neutral';
+            if (cell.state === 'correct') return;
 
-            if (cell.val.length < 2) {
+            if (cell.state === 'wrong') { cell.state = 'neutral'; cell.val = ''; }
+
+            if (cell.val.length < 3) { 
                 cell.val += num;
                 draw();
             }
@@ -456,6 +703,8 @@
         window.inputBackspace = function() {
             if (!isGameActive || !selectedCell) return;
             const cell = grid[selectedCell.r][selectedCell.c];
+            if (cell.state === 'correct') return;
+
             cell.val = cell.val.slice(0, -1);
             cell.state = 'neutral';
             draw();
@@ -476,9 +725,7 @@
                 const cell = grid[r][c];
                 if (cell.t === 'input') {
                     selectedCell = { r, c };
-                    // Clear 'wrong' state on select to encourage trying again
-                    if(cell.state === 'wrong') cell.val = ''; 
-                    cell.state = 'neutral';
+                    if(cell.state === 'wrong') { cell.val = ''; cell.state = 'neutral'; }
                 } else {
                     selectedCell = null;
                 }
