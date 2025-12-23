@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crossmath Puzzle Canvas</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Mencegah scroll pada mobile saat bermain */
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+
+        .canvas-container {
+            position: relative;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        canvas {
+            background-color: #dcd6ce; /* Warna dasar board */
+            display: block;
+            cursor: pointer;
+            /* Mencegah zoom pada double tap di mobile */
+            touch-action: none; 
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #4a90e2;
+            color: white;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background-color: #357abd;
+        }
+
+        button.reset {
+            background-color: #e25c5c;
+        }
+
+        button.reset:hover {
+            background-color: #c0392b;
+        }
+
+        p.info {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        /* Virtual Numpad untuk Mobile (Opsional, muncul jika layar kecil) */
+        .numpad {
+            display: none; 
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+            margin-top: 15px;
+        }
+        
+        @media (max-width: 600px) {
+            .numpad {
+                display: grid;
+            }
+            p.info {
+                display: none; /* Sembunyikan teks instruksi di HP agar hemat tempat */
+            }
+        }
+
+        .num-btn {
+            padding: 15px;
+            font-size: 18px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            color: #333;
+        }
+        
+        .num-btn:active {
+            background-color: #ddd;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Crossmath Puzzle</h1>
+
+    <div class="canvas-container">
+        <canvas id="gameCanvas" width="320" height="320"></canvas>
+    </div>
+
+    <!-- Virtual Numpad untuk pengguna Mobile -->
+    <div class="numpad" id="numpad">
+        <button class="num-btn" onclick="inputNum('1')">1</button>
+        <button class="num-btn" onclick="inputNum('2')">2</button>
+        <button class="num-btn" onclick="inputNum('3')">3</button>
+        <button class="num-btn" onclick="inputNum('4')">4</button>
+        <button class="num-btn" onclick="inputNum('5')">5</button>
+        <button class="num-btn" onclick="inputNum('6')">6</button>
+        <button class="num-btn" onclick="inputNum('7')">7</button>
+        <button class="num-btn" onclick="inputNum('8')">8</button>
+        <button class="num-btn" onclick="inputNum('9')">9</button>
+        <button class="num-btn" onclick="inputNum('0')">0</button>
+        <button class="num-btn" onclick="inputBackspace()">⌫</button>
+    </div>
+
+    <div class="controls">
+        <button class="reset" onclick="resetGame()">Reset</button>
+    </div>
+
+    <p class="info">Klik kotak putih, lalu ketik angka di keyboard (atau gunakan tombol di layar).</p>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Konfigurasi Grid
+        const ROWS = 5;
+        const COLS = 5;
+        // Hitung ukuran sel dinamis agar pas di canvas
+        const CELL_SIZE = canvas.width / COLS; 
+
+        // State Aplikasi
+        let selectedCell = null; // {r, c}
+
+        // Definisi Grid berdasarkan gambar
+        // type: 'fixed' (soal), 'input' (user isi), 'op' (operator), 'empty' (hiasan)
+        // input harus punya 'answer' dan 'userVal'
+        const initialGridConfig = [
+            // Baris 0: 4 * [6] = 24
+            [{t:'fixed', v:'4'}, {t:'op', v:'×'}, {t:'input', ans:'6', val:''}, {t:'op', v:'='}, {t:'fixed', v:'24'}],
+            // Baris 1: Operator vertikal
+            [{t:'op', v:'×'}, {t:'empty'}, {t:'op', v:'÷'}, {t:'empty'}, {t:'op', v:'÷'}],
+            // Baris 2: [3] * 2 = [6]
+            [{t:'input', ans:'3', val:''}, {t:'op', v:'×'}, {t:'fixed', v:'2'}, {t:'op', v:'='}, {t:'input', ans:'6', val:''}],
+            // Baris 3: Operator vertikal
+            [{t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}],
+            // Baris 4: [12] / [3] = 4
+            [{t:'input', ans:'12', val:''}, {t:'op', v:'÷'}, {t:'input', ans:'3', val:''}, {t:'op', v:'='}, {t:'fixed', v:'4'}]
+        ];
+
+        // Clone grid agar bisa di-reset
+        let grid = JSON.parse(JSON.stringify(initialGridConfig));
+
+        function resetGame() {
+            grid = JSON.parse(JSON.stringify(initialGridConfig));
+            selectedCell = null;
+            draw();
+        }
+
+        // --- CORE DRAWING FUNCTION ---
+        function draw() {
+            // 1. Bersihkan layar
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Loop semua sel
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = grid[r][c];
+                    const x = c * CELL_SIZE;
+                    const y = r * CELL_SIZE;
+
+                    // Lewati sel kosong
+                    if (cell.t === 'empty') continue;
+
+                    // Setup Style Dasar
+                    ctx.strokeStyle = "#999";
+                    ctx.lineWidth = 2;
+                    let bgColor = "#ebebeb"; // Default abu-abu (fixed/op)
+                    let textColor = "#333";
+
+                    // Logika Pewarnaan
+                    if (cell.t === 'input') {
+                        bgColor = "#ffffff"; // Default putih
+                        
+                        // Cek Fokus
+                        if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
+                            bgColor = "#e8f0fe"; // Biru muda (fokus)
+                            ctx.strokeStyle = "#4a90e2"; // Border biru
+                        }
+
+                        // Cek Jawaban (Validasi Real-time)
+                        if (cell.val !== '') {
+                            if (cell.val === cell.ans) {
+                                bgColor = "#d4edda"; // Hijau (Benar)
+                                textColor = "#155724";
+                            } else {
+                                bgColor = "#f8d7da"; // Merah (Salah)
+                                textColor = "#721c24";
+                            }
+                        }
+                    }
+
+                    // Gambar Kotak (Rounded rect simulasi)
+                    ctx.fillStyle = bgColor;
+                    ctx.fillRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+                    ctx.strokeRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+
+                    // Gambar Teks
+                    ctx.fillStyle = textColor;
+                    ctx.font = "bold " + (CELL_SIZE * 0.5) + "px Arial";
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+
+                    let text = cell.v || cell.val;
+                    if (cell.t === 'input' && cell.val === '' && !(selectedCell && selectedCell.r === r && selectedCell.c === c)) {
+                        text = ""; // Kosong
+                    }
+
+                    ctx.fillText(text, x + CELL_SIZE/2, y + CELL_SIZE/2 + 2);
+                }
+            }
+        }
+
+        // --- INPUT HANDLERS ---
+
+        // Helper: Handle input angka
+        window.inputNum = function(numStr) {
+            if (!selectedCell) return;
+            const cell = grid[selectedCell.r][selectedCell.c];
+            
+            // Batasi max 2 digit
+            if (cell.val.length < 2) {
+                cell.val += numStr;
+                draw();
+                checkWin();
+            }
+        };
+
+        // Helper: Handle backspace
+        window.inputBackspace = function() {
+            if (!selectedCell) return;
+            const cell = grid[selectedCell.r][selectedCell.c];
+            cell.val = cell.val.slice(0, -1);
+            draw();
+        };
+
+        // 1. Mouse/Touch Click pada Canvas
+        function handlePointer(e) {
+            e.preventDefault(); // Mencegah scrolling/zooming default
+            const rect = canvas.getBoundingClientRect();
+            
+            // Support touch atau mouse
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const mouseX = clientX - rect.left;
+            const mouseY = clientY - rect.top;
+
+            const c = Math.floor(mouseX / CELL_SIZE);
+            const r = Math.floor(mouseY / CELL_SIZE);
+
+            // Cek bounds
+            if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+                const cell = grid[r][c];
+                if (cell.t === 'input') {
+                    selectedCell = { r, c };
+                } else {
+                    selectedCell = null;
+                }
+                draw();
+            }
+        }
+
+        canvas.addEventListener('mousedown', handlePointer);
+        canvas.addEventListener('touchstart', handlePointer, {passive: false});
+
+        // 2. Keyboard Fisik
+        window.addEventListener('keydown', (e) => {
+            if (!selectedCell) return;
+
+            if (e.key >= '0' && e.key <= '9') {
+                inputNum(e.key);
+            } else if (e.key === 'Backspace') {
+                inputBackspace();
+            }
+        });
+
+        // --- GAME LOGIC ---
+        function checkWin() {
+            let allCorrect = true;
+            let allFilled = true;
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cell = grid[r][c];
+                    if (cell.t === 'input') {
+                        if (cell.val === '') allFilled = false;
+                        if (cell.val !== cell.ans) allCorrect = false;
+                    }
+                }
+            }
+
+            if (allCorrect && allFilled) {
+                // Delay sedikit biar render hijau dulu baru alert
+                setTimeout(() => {
+                    // Gambar pesan menang di canvas
+                    ctx.fillStyle = "rgba(0,0,0,0.7)";
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    ctx.fillStyle = "#fff";
+                    ctx.font = "bold 30px Arial";
+                    ctx.fillText("SELESAI!", canvas.width/2, canvas.height/2);
+                    
+                    ctx.font = "16px Arial";
+                    ctx.fillText("Klik Reset untuk main lagi", canvas.width/2, canvas.height/2 + 30);
+                }, 100);
+            }
+        }
+
+        // Init
+        draw();
+
+    </script>
+</body>
+</html>
