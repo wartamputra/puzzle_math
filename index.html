@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crossmath Puzzle Canvas</title>
+    <title>Crossmath Puzzle Canvas - Time Challenge</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -14,13 +14,26 @@
             justify-content: center;
             height: 100vh;
             margin: 0;
-            overflow: hidden; /* Mencegah scroll pada mobile saat bermain */
+            overflow: hidden;
         }
 
         h1 {
             color: #333;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             font-size: 24px;
+        }
+
+        /* Timer Display */
+        .timer-display {
+            font-size: 20px;
+            font-weight: bold;
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 5px 15px;
+            border-radius: 20px;
+            margin-bottom: 15px;
+            border: 1px solid #ffcdd2;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
         .canvas-container {
@@ -31,10 +44,9 @@
         }
 
         canvas {
-            background-color: #dcd6ce; /* Warna dasar board */
+            background-color: #dcd6ce;
             display: block;
             cursor: pointer;
-            /* Mencegah zoom pada double tap di mobile */
             touch-action: none; 
         }
 
@@ -42,6 +54,16 @@
             margin-top: 20px;
             display: flex;
             gap: 10px;
+            align-items: center;
+        }
+
+        select {
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: white;
+            cursor: pointer;
         }
 
         button {
@@ -74,7 +96,6 @@
             text-align: center;
         }
 
-        /* Virtual Numpad untuk Mobile (Opsional, muncul jika layar kecil) */
         .numpad {
             display: none; 
             grid-template-columns: repeat(3, 1fr);
@@ -87,7 +108,7 @@
                 display: grid;
             }
             p.info {
-                display: none; /* Sembunyikan teks instruksi di HP agar hemat tempat */
+                display: none;
             }
         }
 
@@ -107,13 +128,16 @@
 </head>
 <body>
 
-    <h1>Crossmath Puzzle</h1>
+    <h1>Crossmath Challenge</h1>
+    
+    <!-- Timer UI -->
+    <div id="timerDisplay" class="timer-display">Waktu: 00:00</div>
 
     <div class="canvas-container">
         <canvas id="gameCanvas" width="320" height="320"></canvas>
     </div>
 
-    <!-- Virtual Numpad untuk pengguna Mobile -->
+    <!-- Virtual Numpad -->
     <div class="numpad" id="numpad">
         <button class="num-btn" onclick="inputNum('1')">1</button>
         <button class="num-btn" onclick="inputNum('2')">2</button>
@@ -129,121 +153,216 @@
     </div>
 
     <div class="controls">
-        <button class="reset" onclick="resetGame()">Reset</button>
+        <select id="levelSelect" onchange="changeLevel()">
+            <option value="0">Level 1 (Normal - 60s)</option>
+            <option value="1">Level 2 (Mudah - 45s)</option>
+            <option value="2">Level 3 (Sulit - 90s)</option>
+        </select>
+        <button class="reset" onclick="resetGame()">Reset / Ulangi</button>
     </div>
 
-    <p class="info">Klik kotak putih, lalu ketik angka di keyboard (atau gunakan tombol di layar).</p>
+    <p class="info">Selesaikan puzzle sebelum waktu habis!</p>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
+        const timerEl = document.getElementById('timerDisplay');
 
         // Konfigurasi Grid
         const ROWS = 5;
         const COLS = 5;
-        // Hitung ukuran sel dinamis agar pas di canvas
         const CELL_SIZE = canvas.width / COLS; 
 
         // State Aplikasi
-        let selectedCell = null; // {r, c}
+        let selectedCell = null;
+        let currentLevelIndex = 0;
+        let isGameActive = true; // Status game (Main/Selesai/Game Over)
+        
+        // Timer Variables
+        let timerInterval = null;
+        let timeLeft = 0;
 
-        // Definisi Grid berdasarkan gambar
-        // type: 'fixed' (soal), 'input' (user isi), 'op' (operator), 'empty' (hiasan)
-        // input harus punya 'answer' dan 'userVal'
-        const initialGridConfig = [
-            // Baris 0: 4 * [6] = 24
-            [{t:'fixed', v:'4'}, {t:'op', v:'×'}, {t:'input', ans:'6', val:''}, {t:'op', v:'='}, {t:'fixed', v:'24'}],
-            // Baris 1: Operator vertikal
-            [{t:'op', v:'×'}, {t:'empty'}, {t:'op', v:'÷'}, {t:'empty'}, {t:'op', v:'÷'}],
-            // Baris 2: [3] * 2 = [6]
-            [{t:'input', ans:'3', val:''}, {t:'op', v:'×'}, {t:'fixed', v:'2'}, {t:'op', v:'='}, {t:'input', ans:'6', val:''}],
-            // Baris 3: Operator vertikal
-            [{t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}],
-            // Baris 4: [12] / [3] = 4
-            [{t:'input', ans:'12', val:''}, {t:'op', v:'÷'}, {t:'input', ans:'3', val:''}, {t:'op', v:'='}, {t:'fixed', v:'4'}]
+        // --- DATABASE LEVEL (Updated with Time Limits) ---
+        const LEVELS = [
+            {
+                timeLimit: 60, // 60 Detik
+                grid: [
+                    [{t:'fixed', v:'4'}, {t:'op', v:'×'}, {t:'input', ans:'6', val:''}, {t:'op', v:'='}, {t:'fixed', v:'24'}],
+                    [{t:'op', v:'×'}, {t:'empty'}, {t:'op', v:'÷'}, {t:'empty'}, {t:'op', v:'÷'}],
+                    [{t:'input', ans:'3', val:''}, {t:'op', v:'×'}, {t:'fixed', v:'2'}, {t:'op', v:'='}, {t:'input', ans:'6', val:''}],
+                    [{t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}],
+                    [{t:'input', ans:'12', val:''}, {t:'op', v:'÷'}, {t:'input', ans:'3', val:''}, {t:'op', v:'='}, {t:'fixed', v:'4'}]
+                ]
+            },
+            {
+                timeLimit: 45, // 45 Detik
+                grid: [
+                    [{t:'input', ans:'1', val:''}, {t:'op', v:'+'}, {t:'fixed', v:'2'}, {t:'op', v:'='}, {t:'input', ans:'3', val:''}],
+                    [{t:'op', v:'+'}, {t:'empty'}, {t:'op', v:'+'}, {t:'empty'}, {t:'op', v:'+'}],
+                    [{t:'fixed', v:'4'}, {t:'op', v:'+'}, {t:'input', ans:'5', val:''}, {t:'op', v:'='}, {t:'fixed', v:'9'}],
+                    [{t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}],
+                    [{t:'input', ans:'5', val:''}, {t:'op', v:'+'}, {t:'fixed', v:'7'}, {t:'op', v:'='}, {t:'input', ans:'12', val:''}]
+                ]
+            },
+            {
+                timeLimit: 90, // 90 Detik
+                grid: [
+                    [{t:'input', ans:'6', val:''}, {t:'op', v:'÷'}, {t:'input', ans:'2', val:''}, {t:'op', v:'='}, {t:'fixed', v:'3'}],
+                    [{t:'op', v:'+'}, {t:'empty'}, {t:'op', v:'×'}, {t:'empty'}, {t:'op', v:'×'}],
+                    [{t:'fixed', v:'1'}, {t:'op', v:'+'}, {t:'input', ans:'4', val:''}, {t:'op', v:'='}, {t:'input', ans:'5', val:''}],
+                    [{t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}, {t:'empty'}, {t:'op', v:'='}],
+                    [{t:'input', ans:'7', val:''}, {t:'op', v:'+'}, {t:'fixed', v:'8'}, {t:'op', v:'='}, {t:'fixed', v:'15'}]
+                ]
+            }
         ];
 
-        // Clone grid agar bisa di-reset
-        let grid = JSON.parse(JSON.stringify(initialGridConfig));
+        let grid = [];
 
-        function resetGame() {
-            grid = JSON.parse(JSON.stringify(initialGridConfig));
+        // --- TIMER FUNCTIONS ---
+        function startTimer() {
+            stopTimer(); // Hentikan timer sebelumnya jika ada
+            timeLeft = LEVELS[currentLevelIndex].timeLimit;
+            isGameActive = true;
+            updateTimerUI();
+
+            timerInterval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateTimerUI();
+                } else {
+                    gameOver();
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function updateTimerUI() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            const fmt = (n) => n < 10 ? '0' + n : n;
+            timerEl.innerText = `Waktu: ${fmt(minutes)}:${fmt(seconds)}`;
+            
+            // Efek visual jika waktu mau habis
+            if (timeLeft <= 10) {
+                timerEl.style.color = 'red';
+                timerEl.style.backgroundColor = '#ffcccc';
+            } else {
+                timerEl.style.color = '#d32f2f';
+                timerEl.style.backgroundColor = '#ffebee';
+            }
+        }
+
+        function gameOver() {
+            stopTimer();
+            isGameActive = false;
+            selectedCell = null; // Hilangkan fokus
+            draw(); // Redraw untuk memunculkan overlay Game Over
+        }
+
+        // --- GAME FUNCTIONS ---
+
+        function loadLevel(index) {
+            // Deep copy grid agar template asli aman
+            grid = JSON.parse(JSON.stringify(LEVELS[index].grid));
             selectedCell = null;
+            startTimer();
             draw();
         }
 
-        // --- CORE DRAWING FUNCTION ---
+        function changeLevel() {
+            const select = document.getElementById('levelSelect');
+            currentLevelIndex = parseInt(select.value);
+            loadLevel(currentLevelIndex);
+            // Lepaskan fokus dari select agar keyboard tidak mengganti opsi
+            select.blur(); 
+        }
+
+        function resetGame() {
+            loadLevel(currentLevelIndex);
+        }
+
         function draw() {
-            // 1. Bersihkan layar
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // 2. Loop semua sel
             for (let r = 0; r < ROWS; r++) {
                 for (let c = 0; c < COLS; c++) {
                     const cell = grid[r][c];
                     const x = c * CELL_SIZE;
                     const y = r * CELL_SIZE;
 
-                    // Lewati sel kosong
                     if (cell.t === 'empty') continue;
 
-                    // Setup Style Dasar
                     ctx.strokeStyle = "#999";
                     ctx.lineWidth = 2;
-                    let bgColor = "#ebebeb"; // Default abu-abu (fixed/op)
+                    let bgColor = "#ebebeb";
                     let textColor = "#333";
 
-                    // Logika Pewarnaan
                     if (cell.t === 'input') {
-                        bgColor = "#ffffff"; // Default putih
+                        bgColor = "#ffffff";
                         
-                        // Cek Fokus
-                        if (selectedCell && selectedCell.r === r && selectedCell.c === c) {
-                            bgColor = "#e8f0fe"; // Biru muda (fokus)
-                            ctx.strokeStyle = "#4a90e2"; // Border biru
+                        // Highlight hanya jika game aktif
+                        if (isGameActive && selectedCell && selectedCell.r === r && selectedCell.c === c) {
+                            bgColor = "#e8f0fe";
+                            ctx.strokeStyle = "#4a90e2";
                         }
 
-                        // Cek Jawaban (Validasi Real-time)
                         if (cell.val !== '') {
                             if (cell.val === cell.ans) {
-                                bgColor = "#d4edda"; // Hijau (Benar)
+                                bgColor = "#d4edda"; 
                                 textColor = "#155724";
                             } else {
-                                bgColor = "#f8d7da"; // Merah (Salah)
+                                bgColor = "#f8d7da"; 
                                 textColor = "#721c24";
                             }
                         }
                     }
 
-                    // Gambar Kotak (Rounded rect simulasi)
                     ctx.fillStyle = bgColor;
                     ctx.fillRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
                     ctx.strokeRect(x + 2, y + 2, CELL_SIZE - 4, CELL_SIZE - 4);
 
-                    // Gambar Teks
                     ctx.fillStyle = textColor;
                     ctx.font = "bold " + (CELL_SIZE * 0.5) + "px Arial";
                     ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
 
                     let text = cell.v || cell.val;
-                    if (cell.t === 'input' && cell.val === '' && !(selectedCell && selectedCell.r === r && selectedCell.c === c)) {
-                        text = ""; // Kosong
+                    // Sembunyikan input kosong jika tidak sedang dipilih
+                    if (cell.t === 'input' && cell.val === '' && 
+                       (!selectedCell || selectedCell.r !== r || selectedCell.c !== c)) {
+                        text = "";
                     }
 
                     ctx.fillText(text, x + CELL_SIZE/2, y + CELL_SIZE/2 + 2);
                 }
             }
+
+            // Overlay jika Waktu Habis (Game Over)
+            if (!isGameActive && timeLeft <= 0) {
+                ctx.fillStyle = "rgba(0,0,0,0.75)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = "#ff6b6b";
+                ctx.font = "bold 32px Arial";
+                ctx.fillText("WAKTU HABIS!", canvas.width/2, canvas.height/2 - 20);
+                
+                ctx.fillStyle = "#fff";
+                ctx.font = "16px Arial";
+                ctx.fillText("Klik Reset untuk mencoba lagi", canvas.width/2, canvas.height/2 + 20);
+            }
         }
 
         // --- INPUT HANDLERS ---
-
-        // Helper: Handle input angka
         window.inputNum = function(numStr) {
-            if (!selectedCell) return;
+            if (!isGameActive || !selectedCell) return;
             const cell = grid[selectedCell.r][selectedCell.c];
             
-            // Batasi max 2 digit
             if (cell.val.length < 2) {
                 cell.val += numStr;
                 draw();
@@ -251,30 +370,27 @@
             }
         };
 
-        // Helper: Handle backspace
         window.inputBackspace = function() {
-            if (!selectedCell) return;
+            if (!isGameActive || !selectedCell) return;
             const cell = grid[selectedCell.r][selectedCell.c];
             cell.val = cell.val.slice(0, -1);
             draw();
         };
 
-        // 1. Mouse/Touch Click pada Canvas
         function handlePointer(e) {
-            e.preventDefault(); // Mencegah scrolling/zooming default
+            // Klik tetap diproses, tapi seleksi hanya terjadi jika game aktif
+            e.preventDefault(); 
+            if (!isGameActive) return;
+
             const rect = canvas.getBoundingClientRect();
-            
-            // Support touch atau mouse
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
             const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-
             const mouseX = clientX - rect.left;
             const mouseY = clientY - rect.top;
 
             const c = Math.floor(mouseX / CELL_SIZE);
             const r = Math.floor(mouseY / CELL_SIZE);
 
-            // Cek bounds
             if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
                 const cell = grid[r][c];
                 if (cell.t === 'input') {
@@ -289,9 +405,8 @@
         canvas.addEventListener('mousedown', handlePointer);
         canvas.addEventListener('touchstart', handlePointer, {passive: false});
 
-        // 2. Keyboard Fisik
         window.addEventListener('keydown', (e) => {
-            if (!selectedCell) return;
+            if (!isGameActive || !selectedCell) return;
 
             if (e.key >= '0' && e.key <= '9') {
                 inputNum(e.key);
@@ -300,7 +415,6 @@
             }
         });
 
-        // --- GAME LOGIC ---
         function checkWin() {
             let allCorrect = true;
             let allFilled = true;
@@ -316,24 +430,26 @@
             }
 
             if (allCorrect && allFilled) {
-                // Delay sedikit biar render hijau dulu baru alert
+                stopTimer(); // Hentikan waktu jika menang
+                isGameActive = false; // Kunci game
+                
                 setTimeout(() => {
-                    // Gambar pesan menang di canvas
-                    ctx.fillStyle = "rgba(0,0,0,0.7)";
+                    ctx.fillStyle = "rgba(0,0,0,0.8)";
                     ctx.fillRect(0, 0, canvas.width, canvas.height);
                     
-                    ctx.fillStyle = "#fff";
-                    ctx.font = "bold 30px Arial";
-                    ctx.fillText("SELESAI!", canvas.width/2, canvas.height/2);
+                    ctx.fillStyle = "#4cd137";
+                    ctx.font = "bold 32px Arial";
+                    ctx.fillText("SELESAI!", canvas.width/2, canvas.height/2 - 20);
                     
+                    ctx.fillStyle = "#fff";
                     ctx.font = "16px Arial";
-                    ctx.fillText("Klik Reset untuk main lagi", canvas.width/2, canvas.height/2 + 30);
+                    ctx.fillText(`Sisa Waktu: ${timeLeft} detik`, canvas.width/2, canvas.height/2 + 20);
                 }, 100);
             }
         }
 
         // Init
-        draw();
+        loadLevel(0);
 
     </script>
 </body>
